@@ -1,8 +1,48 @@
 import 'dart:io';
 
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/widgets/app_scaffold.dart';
 import 'package:image_picker/image_picker.dart';
+
+Future<void> sendDataWithImage({
+  required BuildContext context,
+  required File imageFile,
+  required String name,
+  required String description,
+  required int difficulty,
+  required int scariness,
+}) async {
+  final url = Uri.parse('http://44.211.123.1:3000/api/theme');
+  /**
+    * HTTP POST 요청을 보내기 위한 MultipartRequest 객체 생성
+    * http.post()와 달리 파일 포함 전송이 가능함
+   */
+  final request = http.MultipartRequest('POST', url);
+
+  request.fields['title'] = name;
+  request.fields['description'] = description;
+  request.fields['difficulty'] = difficulty.toString();
+  request.fields['scariness'] = scariness.toString();
+
+  request.files.add(await http.MultipartFile.fromPath('image', imageFile.path));
+
+  final response = await request.send();
+  final responseBody = await response.stream.bytesToString();
+
+  if (response.statusCode == 200) {
+    print('업로드 성공');
+    print('서버 응답: $responseBody');
+    // ThemeListPage로 이동
+    Navigator.pushReplacementNamed(context, '/');
+  } else {
+    print('업로드 실패: ${response.statusCode}');
+    print('서버 응답: $responseBody');
+  }
+  return;
+}
 
 class ThemeRegisterPage extends StatefulWidget {
   const ThemeRegisterPage({super.key});
@@ -148,7 +188,21 @@ class _ThemeRegisterPageState extends State<ThemeRegisterPage> {
                 ),
                 onPressed: () {
                   if (_formKey.currentState!.validate()) {
-                    print('등록 완료되었습니다.');
+                    if (_thumbnamailImage == null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('썸네일 이미지를 선택해주세요')),
+                      );
+                      return;
+                    }
+
+                    sendDataWithImage(
+                      context: context,
+                      imageFile: _thumbnamailImage!,
+                      name: name,
+                      description: description,
+                      difficulty: difficulty,
+                      scariness: scariness,
+                    );
                   }
                 },
                 child: const Text(
